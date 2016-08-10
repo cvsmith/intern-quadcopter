@@ -12,11 +12,14 @@ uint16_t RC_Channel_Value[NUM_RC_CHANNELS]; //This variable will contain the val
 // RC controller variables
 float yaw_stick, pitch_stick, roll_stick, collective_stick;
 
-#define YS_OFFSET 1600
-#define PS_OFFSET 1550
-#define RS_OFFSET 1000
-#define CS_OFFSET 1500
-
+#define YAW_STICK_OFFSET 1600
+#define PITCH_STICK_OFFSET 1550
+#define ROLL_STICK_OFFSET 1450
+#define COLLECTIVE_STICK_OFFSET 1500
+#define YAW_STICK_SCALE 935
+#define PITCH_STICK_SCALE 896
+#define ROLL_STICK_SCALE 935
+#define COLLECTIVE_STICK_SCALE 1000
 
 #include "RCLib.h" //This include needs all declarations above. Do not try to move it up or it won't compile
 
