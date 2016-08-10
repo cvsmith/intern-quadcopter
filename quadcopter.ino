@@ -1,3 +1,5 @@
+#include <MarkCode2.h>
+
 /**This is an example of using the RCLib with a mega and pinchangeint
  * This example isprovided as is by Jantje
  * DON'T USE THE RIGHT SW
@@ -12,25 +14,26 @@ uint16_t RC_Channel_Value[NUM_RC_CHANNELS];
 // RC controller variables
 #define ROLL_CHAN 0
 #define YAW_CHAN 1
-#define COLLECTIVE_CHAN 2
+#define coll_CHAN 2
 #define PITCH_CHAN 3
 #define GROUNDED_SW_CHAN 4
 
-float yaw_stick, pitch_stick, roll_stick, collective_stick;
+float yaw_stick, pitch_stick, roll_stick, coll_stick;
 bool grounded_sw;
 
 #define YAW_STICK_OFFSET 1600.0
 #define PITCH_STICK_OFFSET 1550.0
 #define ROLL_STICK_OFFSET 1450.0
-#define COLLECTIVE_STICK_OFFSET 1000.0
+#define coll_STICK_OFFSET 1000.0
 #define YAW_STICK_SCALE 446.0
 #define PITCH_STICK_SCALE 485.0
 #define ROLL_STICK_SCALE 485.0
-#define COLLECTIVE_STICK_SCALE 1000.0
+#define coll_STICK_SCALE 1000.0
 #define GROUNDED_SW_THRESHOLD 1500
 
 // IMU variables
 float p, q, r, phi, theta, psi;
+float omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd;
 
 #include "RCLib.h" //This include needs all declarations above. Do not try to move it up or it won't compile
 
@@ -63,7 +66,7 @@ void get_rc_vals()
   yaw_stick = (RC_Channel_Value[YAW_CHAN] - YAW_STICK_OFFSET) / YAW_STICK_SCALE;
   pitch_stick = (RC_Channel_Value[PITCH_CHAN] - PITCH_STICK_OFFSET) / PITCH_STICK_SCALE;
   roll_stick = (RC_Channel_Value[ROLL_CHAN] - ROLL_STICK_OFFSET) / ROLL_STICK_SCALE;
-  collective_stick = (RC_Channel_Value[COLLECTIVE_CHAN] - COLLECTIVE_STICK_OFFSET) / COLLECTIVE_STICK_SCALE;
+  coll_stick = (RC_Channel_Value[coll_CHAN] - coll_STICK_OFFSET) / coll_STICK_SCALE;
   grounded_sw = RC_Channel_Value[GROUNDED_SW_CHAN] > GROUNDED_SW_THRESHOLD ? true : false;
 }
 
@@ -81,13 +84,16 @@ void loop()
   //Add your repeated code here
   get_rc_vals();
   //get_imu_vals();
-  //calc_motor_cmds();
+  /*MarkCode2(roll_stick, pitch_stick, yaw_stick, coll_stick, 
+            p, q, r, phi, theta, psi, grounded_sw, 
+            &omega_1_cmd, &omega_2_cmd, &omega_3_cmd, &omega_4_cmd);
+  */          
   //send_motor_cmds();
   
   int flag;
   if(flag=getChannelsReceiveInfo()) // see duane's excellent articles on how this works
   {
-    plot(yaw_stick, pitch_stick, roll_stick, collective_stick, grounded_sw);
+    plot(yaw_stick, pitch_stick, roll_stick, coll_stick, grounded_sw);
   }
   //delay(50);
 
