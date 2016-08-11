@@ -36,6 +36,7 @@ bool grounded_sw;
 #define GROUNDED_SW_THRESHOLD 1500
 
 // IMU variables
+
 float p, q, r, phi, theta, psi;
 
 #include "RCLib.h" //This include needs all declarations above. Do not try to move it up or it won't compile
@@ -63,26 +64,29 @@ float yaw_trim;
 float trim_dir_diff_omega;
 float coll_sensitivity = 800;
 
+// IMU
+Adafruit_BNO055 bno = Adafruit_BNO055();
+uint8_t system, gyro, accel, mag = 0;   // Calibration status for IMU 0 = no cal, 3 = full cal
 
 /** plot is a general function I use to output data sets
   **/
 void plot(float Data1, float Data2, float Data3, float Data4=0, float Data5=0, float Data6=0, float Data7=0, float Data8=0)
 {
   Serial.print(Data1); 
-  Serial.print(" ");
+  Serial.print("\t\t");
   Serial.print(Data2); 
-  Serial.print(" ");
+  Serial.print("\t\t");
   Serial.print(Data3); 
-  Serial.print(" ");
+  Serial.print("\t\t");
   Serial.print(Data4); 
-  Serial.print(" ");
+  Serial.print("\t\t");
   Serial.print(Data5); 
-  Serial.print(" ");
+  Serial.print("\t\t");
   Serial.print(Data6); 
-  Serial.print(" ");
+  Serial.print("\t\t");
   Serial.print(Data7); 
-  Serial.print(" ");
-  Serial.println(Data8); 
+  Serial.print("\t\t");
+  Serial.println(Data8);
 }
 
 /*
@@ -120,8 +124,28 @@ void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
     dir_diff_omega;
 }
 
+void get_imu_vals()
+{
+  // read the IMU data
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);      // produces variables euler.x, euler.y, euler.z
+  imu::Vector<3> ar = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);   // produces variables la.x, la.y, la.z
+  bno.getCalibration(&system, &gyro, &accel, &mag);                         // produces imu sesnsor calibration variables
+  
+  p = ar.x() * 57.29;
+  q = -1 * ar.y() * 57.29;
+  r = -1 * ar.z() * 57.29;
+  
+  phi = -1 * euler.z();
+  theta = euler.y();
+  psi = euler.x();
+  
+}
+
 void setup()
 {
+  // Turn on the IMU:
+  bno.begin();
+  
   Serial.begin(57600);
   Serial.println(F("Rc serial oscilloscope demo"));
   SetRCInterrupts(); //This method will do all the config for you.
@@ -133,20 +157,21 @@ void loop()
 {
   //Add your repeated code here
   get_rc_vals();  
-  //get_imu_vals();
+  get_imu_vals();
   float omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd;
   MarkCode2(roll_stick, pitch_stick, yaw_stick, coll_stick, 
             p, q, r, phi, theta, psi, grounded_sw, 
             &omega_1_cmd, &omega_2_cmd, &omega_3_cmd, &omega_4_cmd);
-            
-  //send_motor_cmds();
   
+  //send_motor_cmds();
+  // plot(p, q, r, phi, theta, psi);
+  // plot(system, gyro, accel, mag);
   int flag;
   if(flag=getChannelsReceiveInfo()) // see duane's excellent articles on how this works
   {
-    plot(omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd);
+    plot(roll_stick, pitch_stick, yaw_stick, coll_stick, grounded_sw);
   }
-  //delay(50);
+  delay(100);
 
 }
 
