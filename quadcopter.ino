@@ -4,17 +4,15 @@
 #include <Adafruit_Sensor.h>
 
 /*
- * This is an example of using the RCLib with a mega and pinchangeint
- * This example is provided as is by Jantje
  * DON'T USE THE RIGHT SW
  */
 
 // Motors
 Servo motor1, motor2, motor3, motor4;
 
-#define NUM_RC_CHANNELS 5 //You need to specify how many pins you want to use
-#include "PinChangeInt.h"  //If you need pinchangeint you need to include this header
-const uint8_t RC_Channel_Pin[NUM_RC_CHANNELS]={A8,A9,A10,A11,A12};
+#define NUM_RC_CHANNELS 5
+#include "PinChangeInt.h"
+const uint8_t RC_Channel_Pin[NUM_RC_CHANNELS] = {A8,A9,A10,A11,A12};
 
 uint16_t RC_Channel_Value[NUM_RC_CHANNELS];
 
@@ -78,8 +76,6 @@ float coll_sensitivity = 800;
 Adafruit_BNO055 bno = Adafruit_BNO055();
 uint8_t system, gyro, accel, mag = 0;   // Calibration status for IMU 0 = no cal, 3 = full cal
 
-/** plot is a general function I use to output data sets
-  **/
 void plot(float Data1, float Data2, float Data3, float Data4=0, float Data5=0, float Data6=0, float Data7=0, float Data8=0)
 {
   Serial.print(Data1); 
@@ -108,6 +104,7 @@ void get_rc_vals()
   pitch_stick = (RC_Channel_Value[PITCH_CHAN] - PITCH_STICK_OFFSET) / PITCH_STICK_SCALE;
   roll_stick = (RC_Channel_Value[ROLL_CHAN] - ROLL_STICK_OFFSET) / ROLL_STICK_SCALE;
   coll_stick = (RC_Channel_Value[COLL_CHAN] - COLL_STICK_OFFSET) / COLL_STICK_SCALE;
+  
   grounded_sw = RC_Channel_Value[GROUNDED_SW_CHAN] > GROUNDED_SW_THRESHOLD ? true : false;
 }
 
@@ -144,7 +141,7 @@ void get_imu_vals()
 {
   // read the IMU data
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);      // produces variables euler.x, euler.y, euler.z
-  imu::Vector<3> ar = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);   // produces variables la.x, la.y, la.z
+  imu::Vector<3> ar = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);     // produces variables la.x, la.y, la.z
   bno.getCalibration(&system, &gyro, &accel, &mag);                         // produces imu sesnsor calibration variables
   
   p = ar.x() * 57.29;
@@ -206,8 +203,6 @@ void loop()
   {
     clear_rc_vals();
   }
-  
-  delay(100);
-
+  delay(10);
 }
 
