@@ -1,5 +1,3 @@
-#include <MarkCode2.h>
-
 /**This is an example of using the RCLib with a mega and pinchangeint
  * This example isprovided as is by Jantje
  * DON'T USE THE RIGHT SW
@@ -33,9 +31,32 @@ bool grounded_sw;
 
 // IMU variables
 float p, q, r, phi, theta, psi;
-float omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd;
 
 #include "RCLib.h" //This include needs all declarations above. Do not try to move it up or it won't compile
+
+float q_cmd;
+float theta_cmd;
+float q_filt;
+float pitch_sum_filt;
+float pitch_sum;
+float pitch_trim;
+float trim_lon_diff_omega;
+float p_cmd;
+float phi_cmd;
+float p_filt;
+float roll_sum_filt;
+float roll_sum;
+float roll_trim;
+float trim_lat_diff_omega;
+float r_cmd;
+float psi_cmd;
+float r_filt;
+float yaw_sum_filt;
+float yaw_sum;
+float yaw_trim;
+float trim_dir_diff_omega;
+float coll_sensitivity = 800;
+
 
 /** plot is a general function I use to output data sets
   **/
@@ -70,6 +91,27 @@ void get_rc_vals()
   grounded_sw = RC_Channel_Value[GROUNDED_SW_CHAN] > GROUNDED_SW_THRESHOLD ? true : false;
 }
 
+void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
+               coll_stick, float p, float q, float r, float phi, float theta,
+               float psi, bool IC_RST, float *omega_1_cmd, float
+               *omega_2_cmd, float *omega_3_cmd, float *omega_4_cmd)
+{
+  float lon_diff_omega;
+  float lat_diff_omega;
+  float dir_diff_omega;
+  float collective_omega;
+
+  collective_omega = coll_stick * coll_sensitivity;
+  *omega_1_cmd = ((collective_omega + lat_diff_omega) + lon_diff_omega) +
+    dir_diff_omega;
+  *omega_2_cmd = ((collective_omega - lat_diff_omega) + lon_diff_omega) -
+    dir_diff_omega;
+  *omega_3_cmd = ((collective_omega - lat_diff_omega) - lon_diff_omega) +
+    dir_diff_omega;
+  *omega_4_cmd = ((collective_omega + lat_diff_omega) - lon_diff_omega) -
+    dir_diff_omega;
+}
+
 void setup()
 {
   Serial.begin(57600);
@@ -82,18 +124,19 @@ void setup()
 void loop()
 {
   //Add your repeated code here
-  get_rc_vals();
+  get_rc_vals();  
   //get_imu_vals();
-  /*MarkCode2(roll_stick, pitch_stick, yaw_stick, coll_stick, 
+  float omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd;
+  MarkCode2(roll_stick, pitch_stick, yaw_stick, coll_stick, 
             p, q, r, phi, theta, psi, grounded_sw, 
             &omega_1_cmd, &omega_2_cmd, &omega_3_cmd, &omega_4_cmd);
-  */          
+            
   //send_motor_cmds();
   
   int flag;
   if(flag=getChannelsReceiveInfo()) // see duane's excellent articles on how this works
   {
-    plot(yaw_stick, pitch_stick, roll_stick, coll_stick, grounded_sw);
+    plot(omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd);
   }
   //delay(50);
 
