@@ -1,5 +1,11 @@
-/**This is an example of using the RCLib with a mega and pinchangeint
- * This example isprovided as is by Jantje
+#include <Wire.h>
+
+#include <Adafruit_BNO055.h>
+#include <Adafruit_Sensor.h>
+
+/*
+ * This is an example of using the RCLib with a mega and pinchangeint
+ * This example is provided as is by Jantje
  * DON'T USE THE RIGHT SW
  */
 
@@ -100,7 +106,9 @@ void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
   float lat_diff_omega;
   float dir_diff_omega;
   float collective_omega;
-
+  
+  coll_sensitivity -= 1;
+  
   collective_omega = coll_stick * coll_sensitivity;
   *omega_1_cmd = ((collective_omega + lat_diff_omega) + lon_diff_omega) +
     dir_diff_omega;
