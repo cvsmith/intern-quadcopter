@@ -1,5 +1,5 @@
 #include <Wire.h>
-
+#include <Servo.h>
 #include <Adafruit_BNO055.h>
 #include <Adafruit_Sensor.h>
 
@@ -8,6 +8,9 @@
  * This example is provided as is by Jantje
  * DON'T USE THE RIGHT SW
  */
+
+// Motors
+Servo motor1, motor2, motor3, motor4;
 
 #define NUM_RC_CHANNELS 5 //You need to specify how many pins you want to use
 #include "PinChangeInt.h"  //If you need pinchangeint you need to include this header
@@ -24,6 +27,7 @@ uint16_t RC_Channel_Value[NUM_RC_CHANNELS];
 
 float yaw_stick, pitch_stick, roll_stick, coll_stick;
 bool grounded_sw;
+float omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd;
 
 #define YAW_STICK_OFFSET 1600.0
 #define PITCH_STICK_OFFSET 1550.0
@@ -101,6 +105,14 @@ void get_rc_vals()
   grounded_sw = RC_Channel_Value[GROUNDED_SW_CHAN] > GROUNDED_SW_THRESHOLD ? true : false;
 }
 
+void send_motor_cmds()
+{
+  motor1.writeMicroseconds(omega_1_cmd + 1060);
+  motor2.writeMicroseconds(omega_2_cmd + 1060);
+  motor3.writeMicroseconds(omega_3_cmd + 1060);
+  motor4.writeMicroseconds(omega_4_cmd + 1060);
+}
+  
 void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
                coll_stick, float p, float q, float r, float phi, float theta,
                float psi, bool IC_RST, float *omega_1_cmd, float
@@ -146,6 +158,16 @@ void setup()
   // Turn on the IMU:
   bno.begin();
   
+  // Motors
+  motor1.attach(2, 1000, 2000);
+  motor2.attach(3, 1000, 2000);
+  motor3.attach(4, 1000, 2000);
+  motor4.attach(5, 1000, 2000);
+  motor1.writeMicroseconds(1001);
+  motor2.writeMicroseconds(1001);
+  motor3.writeMicroseconds(1001);
+  motor4.writeMicroseconds(1001);
+  
   Serial.begin(57600);
   Serial.println(F("Rc serial oscilloscope demo"));
   SetRCInterrupts(); //This method will do all the config for you.
@@ -158,12 +180,11 @@ void loop()
   //Add your repeated code here
   get_rc_vals();  
   get_imu_vals();
-  float omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd;
   MarkCode2(roll_stick, pitch_stick, yaw_stick, coll_stick, 
             p, q, r, phi, theta, psi, grounded_sw, 
             &omega_1_cmd, &omega_2_cmd, &omega_3_cmd, &omega_4_cmd);
   
-  //send_motor_cmds();
+  send_motor_cmds();
   // plot(p, q, r, phi, theta, psi);
   // plot(system, gyro, accel, mag);
   int flag;
