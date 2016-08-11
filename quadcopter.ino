@@ -122,9 +122,7 @@ void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
   float lat_diff_omega;
   float dir_diff_omega;
   float collective_omega;
-  
-  coll_sensitivity -= 1;
-  
+    
   collective_omega = coll_stick * coll_sensitivity;
   *omega_1_cmd = ((collective_omega + lat_diff_omega) + lon_diff_omega) +
     dir_diff_omega;
