@@ -39,6 +39,9 @@ float omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd;
 #define coll_STICK_SCALE 1000.0
 #define GROUNDED_SW_THRESHOLD 1500
 
+#define MOTOR_SCALE 1.1
+#define MOTOR_OFFSET 1050
+
 // IMU variables
 
 float p, q, r, phi, theta, psi;
@@ -107,10 +110,10 @@ void get_rc_vals()
 
 void send_motor_cmds()
 {
-  motor1.writeMicroseconds(omega_1_cmd + 1060);
-  motor2.writeMicroseconds(omega_2_cmd + 1060);
-  motor3.writeMicroseconds(omega_3_cmd + 1060);
-  motor4.writeMicroseconds(omega_4_cmd + 1060);
+  motor1.writeMicroseconds((omega_1_cmd + MOTOR_OFFSET) * MOTOR_SCALE);
+  motor2.writeMicroseconds((omega_2_cmd + MOTOR_OFFSET) * MOTOR_SCALE);
+  motor3.writeMicroseconds((omega_3_cmd + MOTOR_OFFSET) * MOTOR_SCALE);
+  motor4.writeMicroseconds((omega_4_cmd + MOTOR_OFFSET) * MOTOR_SCALE);
 }
   
 void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
