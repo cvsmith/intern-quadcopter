@@ -1,7 +1,27 @@
+#include <ControlLawConstants.h>
+
+/*
+ * quadcopter.ino - Firmware for a basic quadcopter flight controller
+ */
+
 #include <Wire.h>
 #include <Servo.h>
 #include <Adafruit_BNO055.h>
 #include <Adafruit_Sensor.h>
+
+// Yaw
+#define K_R 1.5
+#define K_PSI 2.5
+#define R_MAX 0.5
+#define R_DOT_MAX 1.0
+#define R_BNDW 2.0
+#define NDR_INV_EST 40.0
+#define NR_EST 0.2
+#define TRIM_TAU 0.1
+#define YAW_TRIM_TAU 2.0
+
+#define DELTA_T 0.01
+#define E 2.71828
 
 /*
  * DON'T USE THE RIGHT SW
@@ -29,6 +49,7 @@ unsigned long last_signal_time; // millis() rolls over after ~50 days
 float yaw_stick, pitch_stick, roll_stick, coll_stick;
 bool grounded_sw = true;
 float omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd;
+bool cmd_mdl_ic = grounded_sw;
 
 #define YAW_STICK_OFFSET 1600.0
 #define PITCH_STICK_OFFSET 1550.0
@@ -116,16 +137,147 @@ void send_motor_cmds()
   motor4.writeMicroseconds((omega_4_cmd + MOTOR_OFFSET) * MOTOR_SCALE);
 }
   
+float integral(float x, float y_prev, bool ic_logic, float ic_var, float dt)
+{
+  float y;
+  if (ic_logic == 1) {
+    y = ic_var;
+  } else {
+    y = y_prev + x * dt;
+  }
+  return y;
+}
+
+float lag(float x, float y_prev, float tau, bool ic_logic, float ic_var, float dt)
+{
+  float y;
+  float K;
+  if (ic_logic == 1) {
+    y = ic_var;
+  } else {
+    K = 1 - pow(E, -1 * dt / tau);
+    y = K * x + (1 - K) * y_prev;
+  }
+}
+
+float slimit(float x, float limit)
+{
+  if (x >= limit) {
+    return limit;
+  } else if (x <= -1 * limit) {
+    return -1 * limit;
+  } else {
+    return x;
+  }
+}
+
+
 void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
                coll_stick, float p, float q, float r, float phi, float theta,
                float psi, bool IC_RST, float *omega_1_cmd, float
                *omega_2_cmd, float *omega_3_cmd, float *omega_4_cmd)
 {
-  float lon_diff_omega;
-  float lat_diff_omega;
-  float dir_diff_omega;
+  float lon_diff_omega, lat_diff_omega, dir_diff_omega;
   float collective_omega;
-    
+  float r_cmd_raw, r_dot_cmd_raw, r_dot_filt, r_dot_cmd, yaw_feedfwd;
+  float yaw_trim_add, yaw_trim_raw, yaw_sum;
+  float r_err, psi_err, yaw_feedback;
+  #define PHI_MAX 0.5
+  #define PHI_BNDW 1.0
+  #define P_BNDW 4.0
+  #define P_MAX 0.5
+  #define P_DOT_MAX 1.0
+  #define LP_EST 1.2
+  #define LDS_INV_EST 2.5
+  #define ROLL_TRIM_TAU 2.0
+  #define K_P 3.0
+  #define K_PHI 6.0
+  float phi_cmd_raw, p_cmd_raw, p_cmd_limited, p_dot_cmd_raw, p_dot_cmd;
+  float p_dot_filt, roll_feedfwd, roll_trim_add, roll_trim_raw, p_err, roll_feedback, phi_err;
+  
+  #define THETA_MAX 0.5
+  #define THETA_BNDW 1.0
+  #define Q_BNDW 4.0
+  #define Q_MAX 0.5
+  #define Q_DOT_MAX 1.0
+  #define MQ_EST 1.2
+  #define MDB_INV_EST 2.5
+  #define PITCH_TRIM_TAU 2.0
+  #define K_Q 3.0
+  #define K_THETA 6.0
+  float theta_cmd_raw, q_cmd_raw, q_cmd_limited, q_dot_cmd_raw, q_dot_cmd;
+  float q_dot_filt, pitch_feedfwd, pitch_trim_add, pitch_trim_raw, q_err, pitch_feedback, theta_err;
+
+
+  // Yaw
+  r_cmd_raw = yaw_stick * R_MAX;
+  r_dot_cmd_raw = R_BNDW * (r_cmd_raw - r_cmd);
+  psi_cmd = integral(r_cmd, psi_cmd, cmd_mdl_ic, psi, DELTA_T);
+  yaw_feedfwd = r_dot_cmd + r_cmd * NR_EST;
+  
+  r_filt = lag(r, r_filt, TRIM_TAU, cmd_mdl_ic, r, DELTA_T);
+  r_dot_filt = (r - r_filt) / TRIM_TAU;
+  yaw_trim_add = r_filt * NR_EST + r_dot_filt;
+  yaw_sum_filt = lag(yaw_sum, yaw_sum_filt, TRIM_TAU, cmd_mdl_ic, r, DELTA_T); 
+  yaw_trim_raw = yaw_sum_filt - yaw_trim_add;
+  yaw_trim = lag(yaw_trim_raw, yaw_trim, YAW_TRIM_TAU, cmd_mdl_ic, 0, DELTA_T);
+
+  r_err = r_cmd - r;
+  psi_err = psi_cmd - psi;
+  yaw_feedback = r_err * K_R + psi_err * K_PSI;
+  
+  yaw_sum = yaw_feedfwd + yaw_feedback + yaw_trim;
+  dir_diff_omega = yaw_sum * NDR_INV_EST;
+  
+  // Roll
+  phi_cmd_raw = roll_stick * PHI_MAX;
+  p_cmd_raw = PHI_BNDW * (phi_cmd_raw - phi_cmd);
+  p_cmd_limited = slimit(p_cmd_raw, P_MAX);
+  p_dot_cmd_raw = P_BNDW * (p_cmd_limited - p_cmd);
+  p_dot_cmd = slimit(p_dot_cmd_raw, P_DOT_MAX);
+  p_cmd = integral(p_dot_cmd, p_cmd, cmd_mdl_ic, 0, DELTA_T);
+  phi_cmd = integral(p_cmd, phi_cmd, cmd_mdl_ic, phi, DELTA_T);
+  roll_feedfwd = p_dot_cmd + p_cmd * LP_EST;
+  
+  p_filt = lag(p, p_filt, TRIM_TAU, cmd_mdl_ic, p, DELTA_T);
+  p_dot_filt = (p - p_filt) / TRIM_TAU;
+  roll_trim_add = p_filt * LP_EST + p_dot_filt;
+  roll_sum_filt = lag(roll_sum, roll_sum_filt, TRIM_TAU, cmd_mdl_ic, p, DELTA_T); 
+  roll_trim_raw = roll_sum_filt - roll_trim_add;
+  roll_trim = lag(roll_trim_raw, roll_trim, ROLL_TRIM_TAU, cmd_mdl_ic, 0, DELTA_T);
+
+  p_err = p_cmd - p;
+  psi_err = psi_cmd - psi;
+  roll_feedback = p_err * K_P + phi_err * K_PHI;
+  
+  roll_sum = roll_feedfwd + roll_feedback + roll_trim;
+  lat_diff_omega = roll_sum * LDS_INV_EST;
+  
+  // Pitch
+  theta_cmd_raw = pitch_stick * THETA_MAX;
+  q_cmd_raw = THETA_BNDW * (theta_cmd_raw - theta_cmd);
+  q_cmd_limited = slimit(q_cmd_raw, Q_MAX);
+  q_dot_cmd_raw = Q_BNDW * (q_cmd_limited - q_cmd);
+  q_dot_cmd = slimit(q_dot_cmd_raw, Q_DOT_MAX);
+  q_cmd = integral(q_dot_cmd, q_cmd, cmd_mdl_ic, 0, DELTA_T);
+  theta_cmd = integral(q_cmd, theta_cmd, cmd_mdl_ic, theta, DELTA_T);
+  pitch_feedfwd = q_dot_cmd + q_cmd * MQ_EST;
+  
+  q_filt = lag(p, q_filt, TRIM_TAU, cmd_mdl_ic, p, DELTA_T);
+  q_dot_filt = (q - q_filt) / TRIM_TAU;
+  pitch_trim_add = q_filt * MQ_EST + q_dot_filt;
+  pitch_sum_filt = lag(pitch_sum, pitch_sum_filt, TRIM_TAU, cmd_mdl_ic, p, DELTA_T); 
+  pitch_trim_raw = pitch_sum_filt - pitch_trim_add;
+  pitch_trim = lag(pitch_trim_raw, pitch_trim, PITCH_TRIM_TAU, cmd_mdl_ic, 0, DELTA_T);
+
+  q_err = q_cmd - p;
+  psi_err = psi_cmd - psi;
+  pitch_feedback = q_err * K_Q + theta_err * K_THETA;
+  
+  pitch_sum = pitch_feedfwd + pitch_feedback + pitch_trim;
+  lon_diff_omega = pitch_sum * MDB_INV_EST;
+  
+  // Collective
   collective_omega = coll_stick * coll_sensitivity;
   *omega_1_cmd = ((collective_omega + lat_diff_omega) + lon_diff_omega) +
     dir_diff_omega;
@@ -181,9 +333,12 @@ void setup()
   Serial.println(F("Interrupts Set; starting "));
 }
 
+/*
+ * loop() - Check RC and IMU, calculate and send motor commands
+ *
+ */
 void loop()
 {
-  //Add your repeated code here
   get_rc_vals();  
   get_imu_vals();
   MarkCode2(roll_stick, pitch_stick, yaw_stick, coll_stick, 
@@ -194,15 +349,18 @@ void loop()
   // plot(p, q, r, phi, theta, psi);
   // plot(system, gyro, accel, mag);
   int flag;
-  if (flag = getChannelsReceiveInfo()) // see duane's excellent articles on how this works
+  if (flag = getChannelsReceiveInfo())
   {
     last_signal_time = millis();
     plot(roll_stick, pitch_stick, yaw_stick, coll_stick, omega_1_cmd, omega_2_cmd, omega_3_cmd, omega_4_cmd);
   }
+  
+  // If the receiver has been disconnected, reset the RC values to 0
   if (last_signal_time - millis() > TIMEOUT)
   {
     clear_rc_vals();
   }
+  
   delay(10);
 }
 
