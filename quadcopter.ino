@@ -127,6 +127,7 @@ void get_rc_vals()
   coll_stick = (RC_Channel_Value[COLL_CHAN] - COLL_STICK_OFFSET) / COLL_STICK_SCALE;
   
   grounded_sw = RC_Channel_Value[GROUNDED_SW_CHAN] > GROUNDED_SW_THRESHOLD ? true : false;
+  cmd_mdl_ic = grounded_sw;
 }
 
 void send_motor_cmds()
@@ -226,7 +227,7 @@ void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
   psi_err = psi_cmd - psi;
   yaw_feedback = r_err * K_R + psi_err * K_PSI;
   
-  yaw_sum = yaw_feedfwd + yaw_feedback + yaw_trim;
+  yaw_sum = yaw_feedfwd + yaw_feedback + yaw_trim * 0;
   dir_diff_omega = yaw_sum * NDR_INV_EST;
   
   // Roll
@@ -250,7 +251,7 @@ void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
   psi_err = psi_cmd - psi;
   roll_feedback = p_err * K_P + phi_err * K_PHI;
   
-  roll_sum = roll_feedfwd + roll_feedback + roll_trim;
+  roll_sum = roll_feedfwd + roll_feedback + roll_trim * 0;
   lat_diff_omega = roll_sum * LDS_INV_EST;
   
   // Pitch
@@ -274,7 +275,7 @@ void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
   psi_err = psi_cmd - psi;
   pitch_feedback = q_err * K_Q + theta_err * K_THETA;
   
-  pitch_sum = pitch_feedfwd + pitch_feedback + pitch_trim;
+  pitch_sum = pitch_feedfwd + pitch_feedback + pitch_trim * 0;
   lon_diff_omega = pitch_sum * MDB_INV_EST;
   
   // Collective
@@ -296,13 +297,13 @@ void get_imu_vals()
   imu::Vector<3> ar = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);     // produces variables la.x, la.y, la.z
   bno.getCalibration(&system, &gyro, &accel, &mag);                         // produces imu sesnsor calibration variables
   
-  p = ar.x() * 57.29;
-  q = -1 * ar.y() * 57.29;
-  r = -1 * ar.z() * 57.29;
+  p = ar.x();
+  q = -1 * ar.y();
+  r = -1 * ar.z();
   
-  phi = -1 * euler.z();
-  theta = euler.y();
-  psi = euler.x();
+  phi = -1 * euler.z() * 0.01745;
+  theta = euler.y() * 0.01745;
+  psi = euler.x() * 0.01745;
   
 }
 
