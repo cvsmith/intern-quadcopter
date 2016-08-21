@@ -1,5 +1,3 @@
-#include <ControlLawConstants.h>
-
 /*
  * quadcopter.ino - Firmware for a basic quadcopter flight controller
  */
@@ -63,6 +61,30 @@ bool cmd_mdl_ic = grounded_sw;
 
 #define MOTOR_SCALE 1.1
 #define MOTOR_OFFSET 1050
+
+// Control law constants
+#define PHI_MAX 0.5
+#define PHI_BNDW 1.0
+#define P_BNDW 4.0
+#define P_MAX 0.5
+#define P_DOT_MAX 1.0
+#define LP_EST 1.2
+#define LDS_INV_EST 2.5
+#define ROLL_TRIM_TAU 2.0
+#define K_P 3.0
+#define K_PHI 6.0
+ 
+#define THETA_MAX 0.5
+#define THETA_BNDW 1.0
+#define Q_BNDW 4.0
+#define Q_MAX 0.5
+#define Q_DOT_MAX 1.0
+#define MQ_EST 1.2
+#define MDB_INV_EST 2.5
+#define PITCH_TRIM_TAU 2.0
+#define K_Q 3.0
+#define K_THETA 6.0
+
 
 // IMU variables
 
@@ -183,32 +205,10 @@ void MarkCode2(float roll_stick, float pitch_stick, float yaw_stick, float
   float r_cmd_raw, r_dot_cmd_raw, r_dot_filt, r_dot_cmd, yaw_feedfwd;
   float yaw_trim_add, yaw_trim_raw, yaw_sum;
   float r_err, psi_err, yaw_feedback;
-  #define PHI_MAX 0.5
-  #define PHI_BNDW 1.0
-  #define P_BNDW 4.0
-  #define P_MAX 0.5
-  #define P_DOT_MAX 1.0
-  #define LP_EST 1.2
-  #define LDS_INV_EST 2.5
-  #define ROLL_TRIM_TAU 2.0
-  #define K_P 3.0
-  #define K_PHI 6.0
   float phi_cmd_raw, p_cmd_raw, p_cmd_limited, p_dot_cmd_raw, p_dot_cmd;
   float p_dot_filt, roll_feedfwd, roll_trim_add, roll_trim_raw, p_err, roll_feedback, phi_err;
-  
-  #define THETA_MAX 0.5
-  #define THETA_BNDW 1.0
-  #define Q_BNDW 4.0
-  #define Q_MAX 0.5
-  #define Q_DOT_MAX 1.0
-  #define MQ_EST 1.2
-  #define MDB_INV_EST 2.5
-  #define PITCH_TRIM_TAU 2.0
-  #define K_Q 3.0
-  #define K_THETA 6.0
   float theta_cmd_raw, q_cmd_raw, q_cmd_limited, q_dot_cmd_raw, q_dot_cmd;
   float q_dot_filt, pitch_feedfwd, pitch_trim_add, pitch_trim_raw, q_err, pitch_feedback, theta_err;
-
 
   // Yaw
   r_cmd_raw = yaw_stick * R_MAX;
